@@ -38,7 +38,7 @@ export default function HomePage() {
       number: '03',
       title: 'Preview Your Look',
       description:
-        'Our AI algorithms visualize realistic fabric drape, fit proportions, and color matching on your silhouette.',
+        'Our upcoming AI models will visualize realistic fabric drape, fit proportions, and color matching on your silhouette (Integration coming soon).',
       icon: Sparkles,
     },
   ];
@@ -98,9 +98,9 @@ export default function HomePage() {
   ];
 
   return (
-    <div className="flex flex-col gap-16 lg:gap-24 py-6 sm:py-12">
+    <div className="flex flex-col gap-16 lg:gap-24 pt-6 pb-16 sm:pt-8 sm:pb-20">
       {/* Hero Section */}
-      <section className="relative overflow-hidden">
+      <section className="relative overflow-hidden scroll-mt-24">
         {/* Ambient Gradient Glows */}
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-gradient-to-tr from-indigo-300/20 to-purple-300/20 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute top-1/3 right-10 w-80 h-80 bg-purple-200/20 rounded-full blur-3xl pointer-events-none" />
@@ -152,7 +152,7 @@ export default function HomePage() {
               <div className="pt-6 border-t border-slate-200/80 flex flex-wrap items-center justify-center lg:justify-start gap-6 text-xs text-slate-500 font-medium">
                 <span className="flex items-center gap-1.5">
                   <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                  Instant Visual Draping
+                  AI Try-On Technology – Coming Soon
                 </span>
                 <span className="flex items-center gap-1.5">
                   <CheckCircle2 className="w-4 h-4 text-emerald-500" />
@@ -199,18 +199,19 @@ export default function HomePage() {
                       <span>Midnight Blazer Fitted</span>
                     </div>
 
-                    <div className="absolute top-3 right-3 bg-emerald-500 text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-md uppercase tracking-wider">
-                      Match: 98%
+                    {/* Accurate Badge: Replaced Match: 98% with SAMPLE PREVIEW */}
+                    <div className="absolute top-3 right-3 bg-indigo-600/90 backdrop-blur-md text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-md uppercase tracking-wider border border-white/20">
+                      SAMPLE PREVIEW
                     </div>
 
-                    {/* Floating Bottom Metric */}
+                    {/* Floating Bottom Metric: Replaced REAL-TIME FITTING SIMULATION with VIRTUAL TRY-ON PREVIEW */}
                     <div className="absolute bottom-4 inset-x-4 bg-slate-900/90 backdrop-blur-md border border-slate-700/80 rounded-xl p-3.5 flex items-center justify-between">
                       <div>
                         <p className="text-[10px] uppercase font-semibold text-indigo-300">
-                          Real-Time Fitting Simulation
+                          VIRTUAL TRY-ON PREVIEW
                         </p>
                         <p className="text-xs font-bold text-white">
-                          Body Pose & Crease Alignment
+                          Planned Pose & Fabric Draping
                         </p>
                       </div>
                       <Link
@@ -233,7 +234,7 @@ export default function HomePage() {
                     </span>
                     <span className="text-slate-600">→</span>
                     <span className="flex items-center gap-1.5 text-indigo-300 font-semibold">
-                      <Sparkles className="w-3.5 h-3.5" /> AI Try-On
+                      <Sparkles className="w-3.5 h-3.5" /> AI Try-On (Coming Soon)
                     </span>
                   </div>
                 </div>
@@ -244,7 +245,7 @@ export default function HomePage() {
       </section>
 
       {/* 3-Step Explanation Section */}
-      <section className="bg-white py-16 border-y border-slate-200/80">
+      <section id="how-it-works" className="bg-white py-16 border-y border-slate-200/80 scroll-mt-24">
         <Container>
           <div className="text-center max-w-2xl mx-auto space-y-3 mb-14">
             <h2 className="text-xs font-bold text-indigo-600 uppercase tracking-widest">
@@ -300,7 +301,7 @@ export default function HomePage() {
       </section>
 
       {/* Benefits for Customers and Garment Retailers */}
-      <section>
+      <section id="benefits" className="scroll-mt-24">
         <Container>
           <div className="text-center max-w-2xl mx-auto space-y-3 mb-16">
             <h2 className="text-xs font-bold text-indigo-600 uppercase tracking-widest">
@@ -387,7 +388,7 @@ export default function HomePage() {
       </section>
 
       {/* Final Call to Action Section */}
-      <section>
+      <section id="cta" className="scroll-mt-24">
         <Container>
           <div className="rounded-3xl bg-gradient-to-tr from-slate-950 via-slate-900 to-indigo-950 p-8 sm:p-14 text-white text-center relative overflow-hidden shadow-2xl border border-indigo-900/40">
             {/* Background elements */}

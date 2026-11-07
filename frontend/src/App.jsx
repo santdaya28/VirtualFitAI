@@ -1,29 +1,31 @@
-import React, { Suspense, lazy } from 'react';
+import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import RootLayout from './layouts/RootLayout';
-import Loading from './components/Loading';
+import ErrorBoundary from './components/ErrorBoundary';
 
-// Route Pages
-const HomePage = lazy(() => import('./pages/HomePage'));
-const TryOnPage = lazy(() => import('./pages/TryOnPage'));
-const CataloguePage = lazy(() => import('./pages/CataloguePage'));
-const AboutPage = lazy(() => import('./pages/AboutPage'));
-const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
+// Route Pages - Directly imported for instant, resilient navigation
+import HomePage from './pages/HomePage';
+import TryOnPage from './pages/TryOnPage';
+import CataloguePage from './pages/CataloguePage';
+import ShopDashboardPage from './pages/ShopDashboardPage';
+import AboutPage from './pages/AboutPage';
+import NotFoundPage from './pages/NotFoundPage';
 
 export default function App() {
   return (
     <BrowserRouter>
-      <Suspense fallback={<Loading fullPage message="Loading VirtualFit AI..." />}>
+      <ErrorBoundary>
         <Routes>
           <Route element={<RootLayout />}>
             <Route index element={<HomePage />} />
             <Route path="try-on" element={<TryOnPage />} />
             <Route path="catalogue" element={<CataloguePage />} />
+            <Route path="shop-dashboard" element={<ShopDashboardPage />} />
             <Route path="about" element={<AboutPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Route>
         </Routes>
-      </Suspense>
+      </ErrorBoundary>
     </BrowserRouter>
   );
 }

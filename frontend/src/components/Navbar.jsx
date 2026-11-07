@@ -12,6 +12,7 @@ export default function Navbar() {
   const location = useLocation();
 
   const isScrolled = scrollPosition > 10;
+  const isShopDashboard = location.pathname.startsWith('/shop-dashboard');
 
   const closeMobileMenu = () => setMobileMenuOpen(false);
 
@@ -48,14 +49,14 @@ export default function Navbar() {
           </Link>
 
           {/* Desktop Navigation with 'end' attribute for exact root matching */}
-          <nav className="hidden md:flex items-center gap-1 lg:gap-2">
+          <nav className="hidden md:flex items-center gap-0.5 lg:gap-1.5">
             {NAV_LINKS.map((link) => (
               <NavLink
                 key={link.path}
                 to={link.path}
                 end={link.path === '/'}
                 className={({ isActive }) =>
-                  `px-3.5 py-2 text-sm font-medium rounded-lg transition-colors ${
+                  `px-2.5 py-1.5 lg:px-3.5 lg:py-2 text-xs lg:text-sm font-medium rounded-lg transition-colors ${
                     isActive
                       ? 'text-indigo-600 bg-indigo-50/70 font-semibold'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70'
@@ -67,17 +68,19 @@ export default function Navbar() {
             ))}
           </nav>
 
-          {/* Right Action Desktop */}
-          <div className="hidden md:flex items-center gap-3">
-            <Button
-              to="/try-on"
-              variant="primary"
-              size="sm"
-              leftIcon={Sparkles}
-            >
-              Try Virtual Fitting
-            </Button>
-          </div>
+          {/* Right Action Desktop (hidden when on Shop Dashboard to separate retailer from customer features) */}
+          {!isShopDashboard && (
+            <div className="hidden md:flex items-center gap-3">
+              <Button
+                to="/try-on"
+                variant="primary"
+                size="sm"
+                leftIcon={Sparkles}
+              >
+                Try Virtual Fitting
+              </Button>
+            </div>
+          )}
 
           {/* Mobile Menu Button */}
           <div className="flex items-center md:hidden gap-2">
@@ -121,18 +124,20 @@ export default function Navbar() {
                   </Link>
                 );
               })}
-              <div className="pt-3 mt-2 border-t border-slate-100">
-                <Button
-                  to="/try-on"
-                  onClick={closeMobileMenu}
-                  variant="primary"
-                  size="md"
-                  rightIcon={ArrowRight}
-                  className="w-full justify-center"
-                >
-                  Start Virtual Try-On
-                </Button>
-              </div>
+              {!isShopDashboard && (
+                <div className="pt-3 mt-2 border-t border-slate-100">
+                  <Button
+                    to="/try-on"
+                    onClick={closeMobileMenu}
+                    variant="primary"
+                    size="md"
+                    rightIcon={ArrowRight}
+                    className="w-full justify-center"
+                  >
+                    Start Virtual Try-On
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         )}

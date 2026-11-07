@@ -55,13 +55,13 @@ export default function AboutPage() {
     },
     {
       step: 'Step 3',
-      title: 'AI Synthesis',
-      desc: 'FastAPI backend dispatches cloth warping, pose estimation, and crease-aware visual draping.',
+      title: 'AI Synthesis (Coming Soon)',
+      desc: 'Planned pipeline: FastAPI backend connects with AI try-on models to map garments onto customer silhouettes.',
     },
     {
       step: 'Step 4',
-      title: 'Instant Fit Decision',
-      desc: 'Shopper reviews their rendered look, compares sizing options, and completes the purchase with confidence.',
+      title: 'Virtual Fit Review',
+      desc: 'Shopper reviews their previewed look, compares sizing options, and completes the purchase with confidence.',
     },
   ];
 
@@ -106,7 +106,7 @@ export default function AboutPage() {
       layer: 'AI Try-On Engine',
       name: 'Virtual Try-On Pipeline / Model Adapter',
       description:
-        'Generative computer vision architecture supporting pose estimation, clothing segmentation, and fabric draping algorithms.',
+        'Generative computer vision architecture planned for pose estimation, clothing segmentation, and fabric draping.',
       icon: Cpu,
       badge: 'Service Adapter Ready',
       badgeColor: 'text-purple-700 bg-purple-50 border-purple-200',
@@ -114,10 +114,10 @@ export default function AboutPage() {
   ];
 
   return (
-    <div className="py-8 sm:py-16">
+    <div className="pt-6 pb-16 sm:pt-10 sm:pb-20">
       <Container>
         {/* Mission Section */}
-        <div className="max-w-3xl mx-auto text-center space-y-4 mb-16">
+        <div className="max-w-3xl mx-auto text-center space-y-4 mb-16 scroll-mt-28">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs font-semibold">
             <Store className="w-3.5 h-3.5" />
             <span>VirtualFit AI Mission</span>
@@ -136,7 +136,7 @@ export default function AboutPage() {
         </div>
 
         {/* Problems We Are Solving Section */}
-        <section className="mb-20 scroll-mt-24" id="retail">
+        <section className="mb-20 scroll-mt-28" id="retail">
           <div className="text-center max-w-xl mx-auto space-y-2 mb-10">
             <h2 className="text-xs font-bold text-indigo-600 uppercase tracking-widest">
               The Retail Challenge
@@ -172,7 +172,7 @@ export default function AboutPage() {
         </section>
 
         {/* How the Platform Works */}
-        <section className="mb-20 rounded-3xl bg-white border border-slate-200 p-8 sm:p-12 shadow-xs">
+        <section className="mb-20 rounded-3xl bg-white border border-slate-200 p-8 sm:p-12 shadow-xs scroll-mt-28">
           <div className="text-center max-w-xl mx-auto space-y-2 mb-10">
             <h2 className="text-xs font-bold text-indigo-600 uppercase tracking-widest">
               Architecture & Flow
@@ -203,7 +203,7 @@ export default function AboutPage() {
         </section>
 
         {/* Technology Stack Section */}
-        <section className="space-y-8 scroll-mt-24" id="technology">
+        <section className="space-y-8 scroll-mt-28" id="technology">
           <div className="text-center max-w-xl mx-auto space-y-2">
             <h2 className="text-xs font-bold text-indigo-600 uppercase tracking-widest">
               Engineered for Scale

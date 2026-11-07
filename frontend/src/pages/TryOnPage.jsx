@@ -9,28 +9,56 @@ import {
   X,
   RefreshCw,
   Shirt,
+  ArrowRight,
+  Image as ImageIcon,
 } from 'lucide-react';
 import Container from '../components/Container';
 import Button from '../components/Button';
 import { SAMPLE_CLOTHES } from '../data/sampleClothes';
 
+const ALLOWED_MIME_TYPES = [
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/webp',
+];
+
+const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp'];
+const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
+
 export default function TryOnPage() {
   const [searchParams] = useSearchParams();
   const fileInputRef = useRef(null);
-
-  // Preselect garment if provided in query params (?garment=id)
-  const initialGarmentId = searchParams.get('garment');
-  const matchedInitial = SAMPLE_CLOTHES.find((g) => g.id === initialGarmentId);
+  const dragCounter = useRef(0);
 
   // States
+  const [prevQueryGarmentId, setPrevQueryGarmentId] = useState(() => searchParams.get('garment'));
   const [customerPhoto, setCustomerPhoto] = useState(null); // { file, previewUrl, name, size }
-  const [selectedGarment, setSelectedGarment] = useState(matchedInitial || SAMPLE_CLOTHES[0]);
+  const [selectedGarment, setSelectedGarment] = useState(() => {
+    const initialGarmentId = searchParams.get('garment');
+    if (!initialGarmentId) return null;
+    return SAMPLE_CLOTHES.find((g) => g.id === initialGarmentId) || null;
+  });
   const [activeCategory, setActiveCategory] = useState('All');
   const [errorMessage, setErrorMessage] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const [cameraNotice, setCameraNotice] = useState(false);
+  const [imageErrors, setImageErrors] = useState({});
 
   const categories = ['All', 'Formal', 'Casual', 'Ethnic', 'Outerwear'];
+
+  // Sync selected garment if query param changes (React 19 render-time adjustment pattern)
+  const currentQueryGarmentId = searchParams.get('garment');
+  if (currentQueryGarmentId !== prevQueryGarmentId) {
+    setPrevQueryGarmentId(currentQueryGarmentId);
+    if (currentQueryGarmentId) {
+      const found = SAMPLE_CLOTHES.find((g) => g.id === currentQueryGarmentId);
+      if (found) {
+        setSelectedGarment(found);
+        setActiveCategory('All');
+      }
+    }
+  }
 
   // Cleanup object URL on unmount or file change
   useEffect(() => {
@@ -47,17 +75,32 @@ export default function TryOnPage() {
 
     if (!file) return;
 
-    // Validate type
-    const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
-    if (!validTypes.includes(file.type)) {
-      setErrorMessage('Please upload a valid image file (JPG, PNG, or WebP).');
+    const fileName = file.name || '';
+    const lastDotIndex = fileName.lastIndexOf('.');
+    const fileExtension = lastDotIndex !== -1 ? fileName.substring(lastDotIndex).toLowerCase() : '';
+    const fileMime = (file.type || '').toLowerCase();
+
+    const isValidType =
+      ALLOWED_MIME_TYPES.includes(fileMime) ||
+      ALLOWED_EXTENSIONS.includes(fileExtension);
+
+    if (!isValidType) {
+      setErrorMessage(
+        `Invalid file type (${fileExtension || file.type || 'unknown'}). Please upload a JPG, JPEG, PNG, or WebP photo.`
+      );
       return;
     }
 
-    // Validate size (max 10MB)
-    const maxSize = 10 * 1024 * 1024;
-    if (file.size > maxSize) {
-      setErrorMessage('File size exceeds 10MB. Please upload a smaller photo.');
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      const sizeInMB = (file.size / (1024 * 1024)).toFixed(1);
+      setErrorMessage(
+        `File size (${sizeInMB} MB) exceeds the 10 MB limit. Please upload a smaller photo.`
+      );
+      return;
+    }
+
+    if (file.size === 0) {
+      setErrorMessage('The selected file appears to be empty. Please choose a valid image.');
       return;
     }
 
@@ -68,13 +111,16 @@ export default function TryOnPage() {
 
     // Create local preview object URL
     const previewUrl = URL.createObjectURL(file);
-    const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
+    const sizeFormatted =
+      file.size >= 1024 * 1024
+        ? `${(file.size / (1024 * 1024)).toFixed(2)} MB`
+        : `${Math.round(file.size / 1024)} KB`;
 
     setCustomerPhoto({
       file,
       previewUrl,
       name: file.name,
-      size: `${sizeInMB} MB`,
+      size: sizeFormatted,
     });
   };
 
@@ -83,22 +129,40 @@ export default function TryOnPage() {
     if (file) {
       processFile(file);
     }
-    // Reset input value so selecting the same file triggers onChange
+    // Reset input value so selecting the same file again triggers onChange
     e.target.value = '';
+  };
+
+  const handleDragEnter = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current += 1;
+    if (e.dataTransfer?.items && e.dataTransfer.items.length > 0) {
+      setIsDragging(true);
+    }
   };
 
   const handleDragOver = (e) => {
     e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'copy';
     setIsDragging(true);
   };
 
   const handleDragLeave = (e) => {
     e.preventDefault();
-    setIsDragging(false);
+    e.stopPropagation();
+    dragCounter.current -= 1;
+    if (dragCounter.current <= 0) {
+      dragCounter.current = 0;
+      setIsDragging(false);
+    }
   };
 
   const handleDrop = (e) => {
     e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current = 0;
     setIsDragging(false);
     const file = e.dataTransfer.files?.[0];
     if (file) {
@@ -117,16 +181,71 @@ export default function TryOnPage() {
     }
   };
 
+  const handleThumbnailError = (id) => {
+    setImageErrors((prev) => ({ ...prev, [id]: true }));
+  };
+
+  const handleGarmentToggle = (garment) => {
+    setSelectedGarment((prev) => (prev?.id === garment.id ? null : garment));
+  };
+
   const filteredGarments =
     activeCategory === 'All'
       ? SAMPLE_CLOTHES
       : SAMPLE_CLOTHES.filter((g) => g.category === activeCategory);
 
+  // Dynamic Viewport Status Calculation
+  const getDynamicStatus = () => {
+    if (customerPhoto && selectedGarment) {
+      return {
+        key: 'both',
+        label: 'Ready for AI Integration',
+        badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        dotColor: 'bg-emerald-500',
+        headline: 'Ready for AI Integration',
+        description:
+          'Both customer photo and outfit are configured. The AI try-on pipeline will drape and synthesize this garment onto your photo once connected.',
+      };
+    }
+    if (customerPhoto && !selectedGarment) {
+      return {
+        key: 'photo_only',
+        label: 'Photo Ready',
+        badgeColor: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+        dotColor: 'bg-indigo-500',
+        headline: 'Photo Ready — Select a Garment',
+        description:
+          'Your customer photo is loaded. Now choose an outfit from Step 2 to configure the try-on preview.',
+      };
+    }
+    if (!customerPhoto && selectedGarment) {
+      return {
+        key: 'garment_only',
+        label: 'Garment Selected',
+        badgeColor: 'bg-purple-50 text-purple-700 border-purple-200',
+        dotColor: 'bg-purple-500',
+        headline: 'Garment Selected — Upload Your Photo',
+        description: `You selected "${selectedGarment.name}". Upload a customer photo in Step 1 to prepare the fitting preview.`,
+      };
+    }
+    return {
+      key: 'none',
+      label: 'Awaiting Photo Upload',
+      badgeColor: 'bg-amber-50 text-amber-700 border-amber-200',
+      dotColor: 'bg-amber-500',
+      headline: 'Awaiting Photo Upload',
+      description:
+        'Upload your customer photo in Step 1 and choose an outfit in Step 2 to configure the virtual fitting canvas.',
+    };
+  };
+
+  const statusInfo = getDynamicStatus();
+
   return (
-    <div className="py-6 sm:py-12">
+    <div className="pt-6 pb-16 sm:pt-10 sm:pb-20">
       <Container>
         {/* Header */}
-        <div className="mb-8 space-y-3">
+        <div className="mb-8 space-y-3 scroll-mt-28">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs font-semibold">
             <Sparkles className="w-3.5 h-3.5" />
             <span>Interactive Fitting Studio</span>
@@ -135,7 +254,7 @@ export default function TryOnPage() {
             Virtual Try-On Studio
           </h1>
           <p className="text-slate-600 text-sm sm:text-base max-w-2xl leading-relaxed">
-            Follow the 3-step studio workflow below to test the customer photo upload, select sample outfits from the store catalogue, and view the AI fitting canvas.
+            Follow the 3-step studio workflow below: upload a customer photo, choose an outfit from the catalogue, and verify the interactive configuration preview.
           </p>
         </div>
 
@@ -149,8 +268,10 @@ export default function TryOnPage() {
               </p>
             </div>
             <button
+              type="button"
               onClick={() => setCameraNotice(false)}
               className="p-1 hover:bg-amber-100 rounded-md text-amber-700 transition-colors cursor-pointer"
+              aria-label="Close notification"
             >
               <X className="w-4 h-4" />
             </button>
@@ -175,39 +296,52 @@ export default function TryOnPage() {
 
               {/* Error Alert */}
               {errorMessage && (
-                <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0" />
-                  <span>{errorMessage}</span>
+                <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center justify-between gap-2 animate-fadeIn">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span>{errorMessage}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setErrorMessage('')}
+                    className="p-0.5 hover:bg-rose-100 rounded text-rose-600 cursor-pointer"
+                    aria-label="Dismiss error"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               )}
+
+              {/* Stable Native File Input (Always in DOM) */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                id="customer-photo-input"
+                accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                onChange={handleFileInputChange}
+                className="hidden"
+                aria-label="Upload customer photo"
+              />
 
               {/* Drag & Drop Upload Zone or Image Preview */}
               {!customerPhoto ? (
                 <div
+                  onDragEnter={handleDragEnter}
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
                   onDrop={handleDrop}
                   className={`border-2 border-dashed rounded-2xl p-6 sm:p-8 text-center transition-all ${
                     isDragging
-                      ? 'border-indigo-600 bg-indigo-50/60 scale-[1.01]'
+                      ? 'border-indigo-600 bg-indigo-50/70 scale-[1.01]'
                       : 'border-slate-300 hover:border-indigo-400 hover:bg-slate-50/60'
                   }`}
                 >
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    id="customer-photo-input"
-                    accept="image/jpeg,image/png,image/webp"
-                    onChange={handleFileInputChange}
-                    className="hidden"
-                  />
-
                   <div className="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto mb-3 shadow-2xs">
                     <Upload className="w-7 h-7" />
                   </div>
 
                   <h3 className="text-sm font-bold text-slate-800">
-                    Drag and drop your photo here
+                    {isDragging ? 'Drop photo here to upload' : 'Drag and drop your photo here'}
                   </h3>
                   <p className="text-xs text-slate-500 mt-1 max-w-xs mx-auto">
                     Full-body or upper-body photo in normal posture and bright lighting works best.
@@ -223,68 +357,81 @@ export default function TryOnPage() {
                       Browse Image
                     </Button>
 
-                    {/* Live Camera Option Marked Coming Soon */}
+                    {/* Live Camera Option Marked Coming Soon & Disabled */}
                     <button
                       type="button"
+                      disabled
                       onClick={() => setCameraNotice(true)}
-                      className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
+                      className="px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-400 text-xs font-semibold flex items-center gap-1.5 cursor-not-allowed opacity-80"
+                      title="Live camera capture is coming soon for in-store tablet kiosks"
                     >
-                      <Camera className="w-3.5 h-3.5 text-slate-500" />
+                      <Camera className="w-3.5 h-3.5 text-slate-400" />
                       <span>Live Camera</span>
                       <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-800 font-bold uppercase">
-                        Soon
+                        Coming Soon
                       </span>
                     </button>
                   </div>
                 </div>
               ) : (
-                /* Photo Preview Card */
-                <div className="space-y-3">
-                  <div className="relative rounded-2xl overflow-hidden border border-slate-200 bg-slate-100 aspect-3/4 max-h-72 w-full flex items-center justify-center group">
+                /* Photo Preview Card with Image Inside and Clear Actions */
+                <div className="space-y-4">
+                  <div className="relative rounded-2xl overflow-hidden border border-slate-200 bg-slate-900/5 aspect-3/4 max-h-72 w-full flex items-center justify-center group shadow-xs">
                     <img
                       src={customerPhoto.previewUrl}
-                      alt="Uploaded customer silhouette"
-                      className="w-full h-full object-cover object-center"
+                      alt={customerPhoto.name}
+                      className="w-full h-full object-contain sm:object-cover object-center"
                     />
 
                     {/* Top overlay badge */}
-                    <div className="absolute top-2.5 left-2.5 bg-slate-900/80 backdrop-blur-md text-white text-[11px] font-medium px-2.5 py-1 rounded-lg flex items-center gap-1.5">
+                    <div className="absolute top-2.5 left-2.5 bg-slate-900/80 backdrop-blur-md text-white text-[11px] font-medium px-2.5 py-1 rounded-lg flex items-center gap-1.5 shadow-xs">
                       <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
                       <span>Photo Loaded (Local Preview)</span>
                     </div>
 
-                    {/* Remove button */}
+                    {/* Quick remove icon button */}
                     <button
                       type="button"
                       onClick={handleRemovePhoto}
                       className="absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-slate-900/80 hover:bg-rose-600 text-white flex items-center justify-center transition-colors shadow-md cursor-pointer"
                       title="Remove Photo"
+                      aria-label="Remove photo"
                     >
                       <X className="w-4 h-4" />
                     </button>
                   </div>
 
-                  {/* Metadata and change actions */}
-                  <div className="flex items-center justify-between text-xs text-slate-500 px-1">
-                    <span className="truncate max-w-[200px] font-medium text-slate-700">
-                      {customerPhoto.name} ({customerPhoto.size})
+                  {/* Metadata line */}
+                  <div className="text-xs text-slate-600 px-1 flex items-center justify-between">
+                    <span className="truncate max-w-[220px] font-medium text-slate-700">
+                      {customerPhoto.name}
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="text-indigo-600 hover:text-indigo-800 font-semibold flex items-center gap-1 cursor-pointer"
-                    >
-                      <RefreshCw className="w-3 h-3" /> Change Photo
-                    </button>
+                    <span className="text-slate-400 text-[11px] shrink-0 font-mono">
+                      {customerPhoto.size}
+                    </span>
                   </div>
 
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    onChange={handleFileInputChange}
-                    className="hidden"
-                  />
+                  {/* Dedicated Action Buttons: Change Photo & Remove Photo */}
+                  <div className="flex items-center gap-2 pt-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      leftIcon={RefreshCw}
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex-1 justify-center text-xs"
+                    >
+                      Change Photo
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      leftIcon={X}
+                      onClick={handleRemovePhoto}
+                      className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 border border-rose-200 text-xs px-3"
+                    >
+                      Remove Photo
+                    </Button>
+                  </div>
                 </div>
               )}
             </div>
@@ -300,39 +447,45 @@ export default function TryOnPage() {
                 </span>
                 <Link
                   to="/catalogue"
-                  className="text-xs font-semibold text-indigo-600 hover:underline"
+                  className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1"
                 >
-                  View Full Catalogue
+                  <span>View Full Catalogue</span>
+                  <ArrowRight className="w-3 h-3" />
                 </Link>
               </div>
 
               {/* Category Pills Filter */}
               <div className="flex items-center gap-1.5 overflow-x-auto pb-2 mb-4 scrollbar-none">
-                {categories.map((cat) => (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => setActiveCategory(cat)}
-                    className={`px-3 py-1 rounded-xl text-xs font-medium transition-all shrink-0 cursor-pointer ${
-                      activeCategory === cat
-                        ? 'bg-indigo-600 text-white shadow-2xs'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    }`}
-                  >
-                    {cat}
-                  </button>
-                ))}
+                {categories.map((cat) => {
+                  const isActive = activeCategory === cat;
+                  return (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setActiveCategory(cat)}
+                      className={`px-3 py-1 rounded-xl text-xs font-medium transition-all shrink-0 cursor-pointer ${
+                        isActive
+                          ? 'bg-indigo-600 text-white shadow-2xs'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  );
+                })}
               </div>
 
               {/* Garments Grid */}
-              <div className="grid grid-cols-2 gap-3 max-h-80 overflow-y-auto pr-1">
+              <div className="grid grid-cols-2 gap-3 max-h-84 overflow-y-auto pr-1">
                 {filteredGarments.map((garment) => {
                   const isSelected = selectedGarment?.id === garment.id;
+                  const hasThumbError = Boolean(imageErrors[garment.id]);
+
                   return (
                     <button
                       key={garment.id}
                       type="button"
-                      onClick={() => setSelectedGarment(garment)}
+                      onClick={() => handleGarmentToggle(garment)}
                       className={`text-left p-2.5 rounded-2xl border transition-all relative group cursor-pointer ${
                         isSelected
                           ? 'border-indigo-600 bg-indigo-50/70 ring-2 ring-indigo-500/40 shadow-xs'
@@ -341,22 +494,22 @@ export default function TryOnPage() {
                     >
                       {/* Image Thumbnail with Fallback */}
                       <div className="h-24 w-full rounded-xl overflow-hidden bg-slate-100 mb-2 relative">
-                        <img
-                          src={garment.image}
-                          alt={garment.name}
-                          className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-300"
-                          onError={(e) => {
-                            e.currentTarget.style.display = 'none';
-                            e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                          }}
-                        />
-                        <div
-                          className={`hidden w-full h-full bg-gradient-to-tr ${garment.fallbackBg} flex items-center justify-center text-white/80`}
-                        >
-                          <Shirt className="w-8 h-8" />
-                        </div>
+                        {!hasThumbError ? (
+                          <img
+                            src={garment.image}
+                            alt={garment.name}
+                            className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-300"
+                            onError={() => handleThumbnailError(garment.id)}
+                          />
+                        ) : (
+                          <div
+                            className={`w-full h-full bg-gradient-to-tr ${garment.fallbackBg} flex items-center justify-center text-white/80`}
+                          >
+                            <Shirt className="w-8 h-8" />
+                          </div>
+                        )}
                         {isSelected && (
-                          <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow-md">
+                          <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow-md animate-scaleIn">
                             <CheckCircle className="w-3.5 h-3.5" />
                           </div>
                         )}
@@ -378,65 +531,152 @@ export default function TryOnPage() {
 
           {/* Right Column: Step 3 AI Preview Viewport */}
           <div className="lg:col-span-7">
-            <div className="rounded-3xl bg-white border border-slate-200/90 p-6 sm:p-8 shadow-sm flex flex-col justify-between min-h-[580px]">
+            <div className="rounded-3xl bg-white border border-slate-200/90 p-6 sm:p-8 shadow-sm flex flex-col justify-between min-h-[600px]">
               <div>
-                {/* Header */}
-                <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+                {/* Header with Dynamic Status Badge */}
+                <div className="flex items-center justify-between pb-4 border-b border-slate-100 gap-2 flex-wrap">
                   <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider flex items-center gap-2">
                     <span className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-black">
                       3
                     </span>
                     AI Preview Viewport
                   </span>
-                  <span className="text-xs font-semibold px-2.5 py-1 rounded-md bg-purple-50 text-purple-700 border border-purple-200">
-                    Integration Coming Soon
-                  </span>
+
+                  {/* Dynamic Studio Status Pill */}
+                  <div
+                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-bold transition-all ${statusInfo.badgeColor}`}
+                  >
+                    <span className={`w-2 h-2 rounded-full ${statusInfo.dotColor} animate-pulse`} />
+                    <span>{statusInfo.label}</span>
+                  </div>
                 </div>
 
                 {/* Main Canvas Viewport Area */}
-                <div className="my-6 rounded-2xl bg-gradient-to-b from-slate-50 to-slate-100/70 border border-slate-200/80 p-6 sm:p-10 flex flex-col items-center justify-center text-center relative overflow-hidden">
-                  {/* Subtle Background Pattern */}
+                <div className="my-6 rounded-2xl bg-gradient-to-b from-slate-50 to-slate-100/70 border border-slate-200/80 p-6 sm:p-8 flex flex-col items-center justify-center text-center relative overflow-hidden">
+                  {/* Subtle Grid Background Pattern */}
                   <div className="absolute inset-0 bg-[radial-gradient(#6366f1_1px,transparent_1px)] [background-size:16px_16px] opacity-15 pointer-events-none" />
 
-                  {/* Icon */}
-                  <div className="relative mb-5">
-                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-600 to-purple-600 text-white flex items-center justify-center shadow-lg shadow-indigo-500/25">
-                      <Sparkles className="w-8 h-8" />
-                    </div>
-                  </div>
+                  {/* Visual Preview Comparison Strip when items are selected */}
+                  {(customerPhoto || selectedGarment) ? (
+                    <div className="relative z-10 w-full max-w-md mb-6 grid grid-cols-2 gap-3 sm:gap-4 items-stretch">
+                      {/* Customer Photo Preview Card */}
+                      <div className="rounded-2xl border border-slate-200/90 bg-white p-2.5 shadow-2xs flex flex-col items-center">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                          Customer Photo
+                        </span>
+                        {customerPhoto ? (
+                          <div className="relative w-full aspect-3/4 rounded-xl overflow-hidden bg-slate-100">
+                            <img
+                              src={customerPhoto.previewUrl}
+                              alt="Customer Preview"
+                              className="w-full h-full object-cover object-center"
+                            />
+                            <div className="absolute bottom-1 inset-x-1 bg-slate-900/75 backdrop-blur-xs text-white text-[9px] font-medium py-0.5 px-1 rounded text-center truncate">
+                              Photo Ready
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="w-full aspect-3/4 rounded-xl border border-dashed border-slate-200 bg-slate-50 flex flex-col items-center justify-center p-2 text-center text-slate-400">
+                            <ImageIcon className="w-6 h-6 mb-1 text-slate-300" />
+                            <span className="text-[10px]">Awaiting Photo</span>
+                          </div>
+                        )}
+                      </div>
 
-                  {/* Headline & Required Message */}
-                  <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight mb-2">
-                    AI try-on integration coming soon
+                      {/* Selected Garment Preview Card */}
+                      <div className="rounded-2xl border border-slate-200/90 bg-white p-2.5 shadow-2xs flex flex-col items-center">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                          Selected Garment
+                        </span>
+                        {selectedGarment ? (
+                          <div className="relative w-full aspect-3/4 rounded-xl overflow-hidden bg-slate-100">
+                            {!imageErrors[selectedGarment.id] ? (
+                              <img
+                                src={selectedGarment.image}
+                                alt={selectedGarment.name}
+                                className="w-full h-full object-cover object-top"
+                                onError={() => handleThumbnailError(selectedGarment.id)}
+                              />
+                            ) : (
+                              <div
+                                className={`w-full h-full bg-gradient-to-tr ${selectedGarment.fallbackBg} flex items-center justify-center text-white/80`}
+                              >
+                                <Shirt className="w-6 h-6" />
+                              </div>
+                            )}
+                            <div className="absolute bottom-1 inset-x-1 bg-slate-900/75 backdrop-blur-xs text-white text-[9px] font-medium py-0.5 px-1 rounded text-center truncate">
+                              {selectedGarment.price}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="w-full aspect-3/4 rounded-xl border border-dashed border-slate-200 bg-slate-50 flex flex-col items-center justify-center p-2 text-center text-slate-400">
+                            <Shirt className="w-6 h-6 mb-1 text-slate-300" />
+                            <span className="text-[10px]">None Selected</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    /* Default Icon when nothing is selected */
+                    <div className="relative mb-5 z-10">
+                      <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-600 to-purple-600 text-white flex items-center justify-center shadow-lg shadow-indigo-500/25">
+                        <Sparkles className="w-8 h-8" />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Headline & Dynamic Context Description */}
+                  <h3 className="relative z-10 text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight mb-2">
+                    {statusInfo.headline}
                   </h3>
 
-                  <p className="text-xs sm:text-sm text-slate-600 max-w-md leading-relaxed mb-6">
-                    The frontend foundation is complete. In the upcoming phase, our AI try-on pipeline will process customer photos, align garments, and generate realistic fabric fits.
+                  <p className="relative z-10 text-xs sm:text-sm text-slate-600 max-w-md leading-relaxed mb-6">
+                    {statusInfo.description}
                   </p>
 
                   {/* Configuration Status Card */}
-                  <div className="w-full max-w-sm rounded-xl bg-white border border-slate-200 p-4 text-left shadow-xs space-y-2.5">
+                  <div className="relative z-10 w-full max-w-sm rounded-xl bg-white border border-slate-200 p-4 text-left shadow-xs space-y-2.5">
+                    {/* Dynamic Status Row */}
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-500 font-medium">Customer Photo:</span>
-                      {customerPhoto ? (
-                        <span className="text-emerald-600 font-bold flex items-center gap-1">
-                          <CheckCircle className="w-3.5 h-3.5" /> Ready ({customerPhoto.name})
-                        </span>
-                      ) : (
-                        <span className="text-amber-600 font-medium">Awaiting Upload (Step 1)</span>
-                      )}
-                    </div>
-
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-500 font-medium">Selected Garment:</span>
-                      <span className="text-indigo-600 font-bold truncate max-w-[180px]">
-                        {selectedGarment?.name || 'None'}
+                      <span className="text-slate-500 font-medium">Studio Status:</span>
+                      <span className={`font-bold px-2 py-0.5 rounded-full border text-[11px] flex items-center gap-1.5 ${statusInfo.badgeColor}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${statusInfo.dotColor}`} />
+                        {statusInfo.label}
                       </span>
                     </div>
 
+                    {/* Customer Photo Row */}
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-500 font-medium">Customer Photo:</span>
+                      {customerPhoto ? (
+                        <span className="text-emerald-600 font-bold flex items-center gap-1 truncate max-w-[180px]">
+                          <CheckCircle className="w-3.5 h-3.5 shrink-0" />
+                          <span className="truncate">Photo Ready ({customerPhoto.name})</span>
+                        </span>
+                      ) : (
+                        <span className="text-amber-600 font-medium">Awaiting Photo Upload</span>
+                      )}
+                    </div>
+
+                    {/* Selected Garment Row */}
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-500 font-medium">Selected Garment:</span>
+                      {selectedGarment ? (
+                        <span className="text-indigo-600 font-bold truncate max-w-[180px]" title={selectedGarment.name}>
+                          {selectedGarment.name}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 italic">None Selected</span>
+                      )}
+                    </div>
+
+                    {/* Fitting Algorithm Row: Strictly "AI Engine: Not Connected" */}
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-slate-500 font-medium">Fitting Algorithm:</span>
-                      <span className="text-slate-700 font-mono">Fashn / IDM-VTON API</span>
+                      <span className="text-slate-700 font-semibold flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-slate-400 inline-block" />
+                        AI Engine: Not Connected
+                      </span>
                     </div>
                   </div>
                 </div>

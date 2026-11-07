@@ -4,13 +4,32 @@ import {
   Sparkles,
   Filter,
   Database,
+  RotateCcw,
+  PackageSearch,
 } from 'lucide-react';
 import Container from '../components/Container';
 import Button from '../components/Button';
 import { SAMPLE_CLOTHES } from '../data/sampleClothes';
 
+/**
+ * Format price to ensure Indian Rupee (₹) symbol and formatting
+ */
+function formatRupeePrice(price) {
+  if (!price && price !== 0) return '₹0';
+  if (typeof price === 'string') {
+    if (price.startsWith('₹')) return price;
+    if (price.startsWith('$')) {
+      const num = parseFloat(price.replace('$', ''));
+      return isNaN(num) ? `₹${price.slice(1)}` : `₹${Math.round(num * 25).toLocaleString('en-IN')}`;
+    }
+    return `₹${price}`;
+  }
+  return `₹${Number(price).toLocaleString('en-IN')}`;
+}
+
 export default function CataloguePage() {
   const [activeCategory, setActiveCategory] = useState('All');
+  const [imageErrors, setImageErrors] = useState({});
 
   const categories = [
     'All',
@@ -20,16 +39,23 @@ export default function CataloguePage() {
     'Outerwear',
   ];
 
+  // Defensive array fallback
+  const allGarments = Array.isArray(SAMPLE_CLOTHES) ? SAMPLE_CLOTHES : [];
+
   const filteredClothes =
     activeCategory === 'All'
-      ? SAMPLE_CLOTHES
-      : SAMPLE_CLOTHES.filter((item) => item.category === activeCategory);
+      ? allGarments
+      : allGarments.filter((item) => item?.category === activeCategory);
+
+  const handleImageError = (id) => {
+    setImageErrors((prev) => ({ ...prev, [id]: true }));
+  };
 
   return (
-    <div className="py-8 sm:py-14">
+    <div className="pt-6 pb-16 sm:pt-10 sm:pb-20">
       <Container>
         {/* Header Section */}
-        <div className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6 scroll-mt-28">
           <div className="space-y-3 max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs font-semibold">
               <Shirt className="w-3.5 h-3.5" />
@@ -39,7 +65,7 @@ export default function CataloguePage() {
               Curated Clothing Catalogue
             </h1>
             <p className="text-slate-600 text-sm sm:text-base leading-relaxed">
-              Explore sample garments across Formal, Casual, Ethnic, and Outerwear categories.
+              Explore sample garments across Formal, Casual, Ethnic, and Outerwear collections.
               Click <strong>"Try On This Item"</strong> on any piece to test it directly inside the Virtual Try-On studio.
             </p>
           </div>
@@ -67,7 +93,7 @@ export default function CataloguePage() {
                 Inventory Architecture Ready
               </p>
               <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
-                Currently displaying verified sample collections from <code className="text-slate-200">src/data/sampleClothes.js</code>. This view will dynamically synchronize with your PostgreSQL database in Step 2.
+                Currently displaying verified sample collections with prices in ₹. This view will dynamically synchronize with your PostgreSQL database in Step 2.
               </p>
             </div>
           </div>
@@ -100,84 +126,112 @@ export default function CataloguePage() {
           })}
         </div>
 
-        {/* Garments Product Card Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {filteredClothes.map((garment) => (
-            <div
-              key={garment.id}
-              className="group rounded-3xl bg-white border border-slate-200/90 shadow-xs hover:shadow-xl hover:border-indigo-300 transition-all flex flex-col justify-between overflow-hidden"
-            >
-              <div>
-                {/* Product Image with Fallback and Badges */}
-                <div className="relative aspect-3/4 overflow-hidden bg-slate-100">
-                  <img
-                    src={garment.image}
-                    alt={garment.name}
-                    className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500"
-                    loading="lazy"
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none';
-                      e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                    }}
-                  />
-
-                  {/* Fallback Container if Image Fails */}
-                  <div
-                    className={`hidden w-full h-full bg-gradient-to-tr ${garment.fallbackBg} flex flex-col items-center justify-center text-white/80 p-4`}
-                  >
-                    <Shirt className="w-16 h-16 mb-2" />
-                    <span className="text-xs font-semibold text-white/90">{garment.name}</span>
-                  </div>
-
-                  {/* Category Pill */}
-                  <span className="absolute top-3 left-3 text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-full bg-slate-900/80 backdrop-blur-md text-white">
-                    {garment.category}
-                  </span>
-
-                  {/* Badge */}
-                  <span className="absolute top-3 right-3 text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-600 text-white shadow-xs">
-                    {garment.badge}
-                  </span>
-
-                  {/* Bottom Image Tint */}
-                  <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-slate-950/60 to-transparent flex items-end p-3">
-                    <span className="text-xs text-white/95 font-medium">
-                      {garment.fit} • {garment.color}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Card Details */}
-                <div className="p-5 space-y-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <h3 className="font-bold text-base text-slate-900 group-hover:text-indigo-600 transition-colors leading-snug">
-                      {garment.name}
-                    </h3>
-                    <span className="font-black text-indigo-600 text-lg shrink-0">
-                      {garment.price}
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
-                    {garment.description}
-                  </p>
-                </div>
-              </div>
-
-              {/* Action Button linking to /try-on with garment parameter */}
-              <div className="p-5 pt-0">
-                <Button
-                  to={`/try-on?garment=${garment.id}`}
-                  variant="secondary"
-                  size="sm"
-                  leftIcon={Sparkles}
-                  className="w-full justify-center group-hover:bg-indigo-600 group-hover:text-white transition-colors"
-                >
-                  Try On This Item
-                </Button>
-              </div>
+        {/* Empty State when no products match filter */}
+        {filteredClothes.length === 0 ? (
+          <div className="rounded-3xl bg-white border border-slate-200/90 p-12 text-center max-w-lg mx-auto shadow-xs">
+            <div className="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto mb-4">
+              <PackageSearch className="w-7 h-7" />
             </div>
-          ))}
-        </div>
+            <h3 className="text-lg font-bold text-slate-900 mb-1">
+              No garments found
+            </h3>
+            <p className="text-xs text-slate-500 mb-6 leading-relaxed">
+              There are currently no items available in the <span className="font-semibold text-slate-700">"{activeCategory}"</span> category.
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              leftIcon={RotateCcw}
+              onClick={() => setActiveCategory('All')}
+            >
+              Reset to All Categories
+            </Button>
+          </div>
+        ) : (
+          /* Garments Product Card Grid */
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {filteredClothes.map((garment) => {
+              const hasError = Boolean(imageErrors[garment.id]);
+              const formattedPrice = formatRupeePrice(garment.price);
+
+              return (
+                <div
+                  key={garment.id}
+                  className="group rounded-3xl bg-white border border-slate-200/90 shadow-xs hover:shadow-xl hover:border-indigo-300 transition-all flex flex-col justify-between overflow-hidden"
+                >
+                  <div>
+                    {/* Product Image with Fallback and Badges */}
+                    <div className="relative aspect-3/4 overflow-hidden bg-slate-100">
+                      {!hasError ? (
+                        <img
+                          src={garment.image}
+                          alt={garment.name}
+                          className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500"
+                          loading="lazy"
+                          onError={() => handleImageError(garment.id)}
+                        />
+                      ) : (
+                        <div
+                          className={`w-full h-full bg-gradient-to-tr ${garment.fallbackBg} flex flex-col items-center justify-center text-white/80 p-4`}
+                        >
+                          <Shirt className="w-16 h-16 mb-2" />
+                          <span className="text-xs font-semibold text-white/90">{garment.name}</span>
+                        </div>
+                      )}
+
+                      {/* Category Pill */}
+                      <span className="absolute top-3 left-3 text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-full bg-slate-900/80 backdrop-blur-md text-white">
+                        {garment.category}
+                      </span>
+
+                      {/* Badge */}
+                      {garment.badge && (
+                        <span className="absolute top-3 right-3 text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-600 text-white shadow-xs">
+                          {garment.badge}
+                        </span>
+                      )}
+
+                      {/* Bottom Image Tint */}
+                      <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-slate-950/60 to-transparent flex items-end p-3">
+                        <span className="text-xs text-white/95 font-medium">
+                          {garment.fit} • {garment.color}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Card Details */}
+                    <div className="p-5 space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className="font-bold text-base text-slate-900 group-hover:text-indigo-600 transition-colors leading-snug">
+                          {garment.name}
+                        </h3>
+                        <span className="font-black text-indigo-600 text-lg shrink-0">
+                          {formattedPrice}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
+                        {garment.description}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Action Button linking to /try-on with garment parameter */}
+                  <div className="p-5 pt-0">
+                    <Button
+                      to={`/try-on?garment=${garment.id}`}
+                      variant="secondary"
+                      size="sm"
+                      leftIcon={Sparkles}
+                      className="w-full justify-center group-hover:bg-indigo-600 group-hover:text-white transition-colors"
+                    >
+                      Try On This Item
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </Container>
     </div>
   );

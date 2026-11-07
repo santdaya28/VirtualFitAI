@@ -21,7 +21,11 @@ export default function RootLayout() {
         }
       }, 50);
     } else {
-      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      try {
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      } catch {
+        window.scrollTo(0, 0);
+      }
     }
   }, [pathname, hash]);
 
