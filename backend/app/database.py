@@ -69,6 +69,27 @@ def get_db() -> Generator[Optional[Session], None, None]:
     finally:
         db.close()
 
+def init_db() -> bool:
+    """
+    Safely creates database tables for all registered models if they do not already exist.
+    Will not drop or overwrite existing tables or data.
+    """
+    # Import models here to ensure they are registered with Base.metadata
+    import app.models  # noqa: F401
+
+    if engine is None:
+        logger.warning("Cannot initialize database tables: engine is not configured.")
+        return False
+
+    try:
+        Base.metadata.create_all(bind=engine)
+        logger.info("Database tables verified/created successfully.")
+        return True
+    except Exception as exc:
+        logger.error(f"Error while verifying/creating database tables: {exc}")
+        return False
+
+
 def check_db_health() -> dict:
     """
     Health check utility to verify PostgreSQL connectivity.

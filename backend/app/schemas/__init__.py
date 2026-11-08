@@ -1,3 +1,17 @@
+from app.schemas.shop import (
+    ShopBase,
+    ShopCreate,
+    ShopUpdate,
+    ShopResponse,
+    ShopListResponse,
+)
+from app.schemas.product import (
+    ProductBase,
+    ProductCreate,
+    ProductUpdate,
+    ProductResponse,
+    ProductListResponse,
+)
 from app.schemas.garment import (
     GarmentBase,
     GarmentCreate,
@@ -12,6 +26,19 @@ from app.schemas.tryon import (
 )
 
 __all__ = [
+    # Shop Schemas
+    "ShopBase",
+    "ShopCreate",
+    "ShopUpdate",
+    "ShopResponse",
+    "ShopListResponse",
+    # Product Schemas
+    "ProductBase",
+    "ProductCreate",
+    "ProductUpdate",
+    "ProductResponse",
+    "ProductListResponse",
+    # Legacy Garment & TryOn Schemas
     "GarmentBase",
     "GarmentCreate",
     "GarmentUpdate",
@@ -21,4 +48,3 @@ __all__ = [
     "TryOnSessionResponse",
     "TryOnStatusResponse",
 ]
-

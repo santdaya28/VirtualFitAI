@@ -3,10 +3,13 @@ import time
 import logging
 from pathlib import Path
 from typing import List
+from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.database import check_db_health
+from app.database import check_db_health, init_db
+from app.models import Shop, Product  # Ensures models are registered with Base.metadata
+from app.routers import shops_router, products_router
 
 # Load environment variables from backend/.env regardless of execution directory
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -25,6 +28,25 @@ logger = logging.getLogger("virtualfit.main")
 
 START_TIME = time.time()
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Application lifespan context manager.
+    Safely creates database tables for registered models on startup without dropping existing data.
+    """
+    logger.info("Initializing VirtualFit AI Backend...")
+    # Initialize/verify database tables if PostgreSQL is connected
+    health = check_db_health()
+    if health.get("status") == "connected":
+        init_db()
+        logger.info("Database models 'shops' and 'products' verified.")
+    else:
+        logger.info(f"Database status at startup: {health.get('status')} - {health.get('message')}")
+    yield
+    logger.info("VirtualFit AI Backend shutting down.")
+
+
 # Initialize FastAPI application
 app = FastAPI(
     title="VirtualFit AI API",
@@ -33,6 +55,7 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_url="/openapi.json",
+    lifespan=lifespan,
 )
 
 # CORS Configuration
@@ -52,6 +75,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Register API Routers
+app.include_router(shops_router)
+app.include_router(products_router)
 
 @app.get(
     "/",
