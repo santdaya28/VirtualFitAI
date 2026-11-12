@@ -7,6 +7,9 @@ import {
   Trash2,
   Eye,
   RotateCcw,
+  ToggleLeft,
+  ToggleRight,
+  Plus,
 } from 'lucide-react';
 import Button from '../Button';
 
@@ -14,6 +17,8 @@ export default function ProductsTab({
   products,
   onEditProduct,
   onDeleteProduct,
+  onToggleAvailability,
+  onAddProduct,
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -48,13 +53,20 @@ export default function ProductsTab({
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Top Header */}
-      <div className="pb-3 border-b border-slate-200">
-        <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-          Product Management
-        </h2>
-        <p className="text-xs sm:text-sm text-slate-500">
-          View, search, edit, and organize clothing items in your retail catalogue.
-        </p>
+      <div className="pb-3 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+            Product Management
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-500">
+            View, search, edit, and organize clothing items in your retail catalogue.
+          </p>
+        </div>
+        {onAddProduct && (
+          <Button variant="primary" size="sm" leftIcon={Plus} onClick={onAddProduct}>
+            Add Product
+          </Button>
+        )}
       </div>
 
       {/* Search & Filter Controls Bar */}
@@ -190,7 +202,9 @@ export default function ProductsTab({
                               <p className="font-bold text-slate-900 truncate max-w-[200px]">
                                 {garment.name}
                               </p>
-                              {garment.id?.startsWith('garment-') && !garment.id?.startsWith('garment-17') && (
+                              {typeof garment.id === 'string' &&
+                                garment.id.startsWith('garment-') &&
+                                !garment.id.startsWith('garment-17') && (
                                 <span className="text-[9px] px-1.5 py-0.2 rounded bg-slate-100 text-slate-500 font-semibold border border-slate-200">
                                   Demo
                                 </span>
@@ -242,14 +256,17 @@ export default function ProductsTab({
 
                       {/* Status */}
                       <td className="py-3.5 px-3">
-                        <span
-                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                        <button
+                          type="button"
+                          onClick={() => onToggleAvailability && onToggleAvailability(garment)}
+                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold cursor-pointer transition-opacity hover:opacity-85 ${
                             garment.status === 'In Stock'
                               ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                               : garment.status === 'Low Stock'
                               ? 'bg-amber-50 text-amber-700 border border-amber-200'
                               : 'bg-rose-50 text-rose-700 border border-rose-200'
                           }`}
+                          title="Click to toggle availability"
                         >
                           <span
                             className={`w-1.5 h-1.5 rounded-full ${
@@ -261,12 +278,35 @@ export default function ProductsTab({
                             }`}
                           />
                           {garment.status || 'In Stock'}
-                        </span>
+                        </button>
                       </td>
 
                       {/* Actions */}
                       <td className="py-3.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
+                          {/* Change Availability Action */}
+                          {onToggleAvailability && (
+                            <button
+                              type="button"
+                              onClick={() => onToggleAvailability(garment)}
+                              className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                                garment.is_available !== false && garment.status !== 'Out of Stock'
+                                  ? 'hover:bg-emerald-50 text-emerald-600 hover:text-emerald-700'
+                                  : 'hover:bg-slate-100 text-slate-400 hover:text-slate-600'
+                              }`}
+                              title={
+                                garment.is_available !== false && garment.status !== 'Out of Stock'
+                                  ? 'Change Availability: Currently Active (Click to mark Out of Stock)'
+                                  : 'Change Availability: Currently Out of Stock (Click to mark Active)'
+                              }
+                            >
+                              {garment.is_available !== false && garment.status !== 'Out of Stock' ? (
+                                <ToggleRight className="w-4 h-4" />
+                              ) : (
+                                <ToggleLeft className="w-4 h-4" />
+                              )}
+                            </button>
+                          )}
                           <Link
                             to={`/try-on?garment=${garment.id}`}
                             className="p-1.5 hover:bg-indigo-50 rounded-lg text-slate-500 hover:text-indigo-600 transition-colors"

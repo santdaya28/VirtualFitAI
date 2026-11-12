@@ -73,6 +73,7 @@ def init_db() -> bool:
     """
     Safely creates database tables for all registered models if they do not already exist.
     Will not drop or overwrite existing tables or data.
+    Also ensures schema alignment for existing tables (e.g. adding missing columns).
     """
     # Import models here to ensure they are registered with Base.metadata
     import app.models  # noqa: F401
@@ -83,7 +84,82 @@ def init_db() -> bool:
 
     try:
         Base.metadata.create_all(bind=engine)
-        logger.info("Database tables verified/created successfully.")
+
+        # Non-destructive schema alignment for PostgreSQL
+        if engine.dialect.name == "postgresql":
+            with engine.connect() as conn:
+                conn.execute(text("""
+                    ALTER TABLE tryon_sessions 
+                        ADD COLUMN IF NOT EXISTS product_id INTEGER REFERENCES products(id) ON DELETE SET NULL;
+                    ALTER TABLE tryon_sessions 
+                        ADD COLUMN IF NOT EXISTS progress_percentage INTEGER NOT NULL DEFAULT 0;
+                    ALTER TABLE tryon_sessions 
+                        ADD COLUMN IF NOT EXISTS stage_message VARCHAR(255);
+                    ALTER TABLE tryon_sessions 
+                        ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
+                    ALTER TABLE tryon_sessions 
+                        ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE SET NULL;
+                    ALTER TABLE tryon_sessions 
+                        ADD COLUMN IF NOT EXISTS provenance VARCHAR(50) NOT NULL DEFAULT 'mock_simulation';
+                    ALTER TABLE tryon_sessions 
+                        ADD COLUMN IF NOT EXISTS error_category VARCHAR(64);
+                    ALTER TABLE tryon_sessions 
+                        ADD COLUMN IF NOT EXISTS retry_after_seconds INTEGER;
+                    ALTER TABLE tryon_sessions 
+                        ADD COLUMN IF NOT EXISTS quota_resets_at VARCHAR(64);
+                    CREATE INDEX IF NOT EXISTS ix_tryon_sessions_product_id ON tryon_sessions (product_id);
+                    CREATE INDEX IF NOT EXISTS ix_tryon_sessions_user_id ON tryon_sessions (user_id);
+
+                    CREATE TABLE IF NOT EXISTS revoked_tokens (
+                        id SERIAL PRIMARY KEY,
+                        token_hash VARCHAR(64) UNIQUE NOT NULL,
+                        revoked_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+                        expires_at TIMESTAMP WITH TIME ZONE NOT NULL
+                    );
+                    CREATE INDEX IF NOT EXISTS ix_revoked_tokens_token_hash ON revoked_tokens (token_hash);
+                    CREATE INDEX IF NOT EXISTS ix_revoked_tokens_expires_at ON revoked_tokens (expires_at);
+
+                    ALTER TABLE products
+                        ALTER COLUMN size TYPE VARCHAR(255);
+                    ALTER TABLE products
+                        ALTER COLUMN color TYPE VARCHAR(255);
+
+                    ALTER TABLE shops
+                        ADD COLUMN IF NOT EXISTS slug VARCHAR(120);
+                    CREATE UNIQUE INDEX IF NOT EXISTS ix_shops_slug ON shops (slug);
+                """))
+                conn.commit()
+
+        # Non-destructive backfill of missing storefront slugs for existing shops
+        if SessionLocal is not None:
+            from app.models import Shop
+            from app.core.slugs import generate_unique_shop_slug
+
+            db = SessionLocal()
+            try:
+                shops_missing_slug = (
+                    db.query(Shop)
+                    .filter((Shop.slug.is_(None)) | (Shop.slug == ""))
+                    .order_by(Shop.id.asc())
+                    .all()
+                )
+                if shops_missing_slug:
+                    for existing_shop in shops_missing_slug:
+                        existing_shop.slug = generate_unique_shop_slug(
+                            db,
+                            existing_shop.shop_name,
+                            exclude_shop_id=existing_shop.id,
+                        )
+                        db.flush()
+                    db.commit()
+                    logger.info(f"Backfilled storefront slugs for {len(shops_missing_slug)} existing shop(s).")
+            except Exception as slug_exc:
+                db.rollback()
+                logger.warning(f"Non-fatal error while backfilling shop slugs: {slug_exc}")
+            finally:
+                db.close()
+
+        logger.info("Database tables and schema alignment verified successfully.")
         return True
     except Exception as exc:
         logger.error(f"Error while verifying/creating database tables: {exc}")

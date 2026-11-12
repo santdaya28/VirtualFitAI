@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import RootLayout from './layouts/RootLayout';
 import ErrorBoundary from './components/ErrorBoundary';
+import { AuthProvider } from './context/AuthContext';
 
 // Route Pages - Directly imported for instant, resilient navigation
 import HomePage from './pages/HomePage';
@@ -15,16 +16,21 @@ export default function App() {
   return (
     <BrowserRouter>
       <ErrorBoundary>
-        <Routes>
-          <Route element={<RootLayout />}>
-            <Route index element={<HomePage />} />
-            <Route path="try-on" element={<TryOnPage />} />
-            <Route path="catalogue" element={<CataloguePage />} />
-            <Route path="shop-dashboard" element={<ShopDashboardPage />} />
-            <Route path="about" element={<AboutPage />} />
-            <Route path="*" element={<NotFoundPage />} />
-          </Route>
-        </Routes>
+        <AuthProvider>
+          <Routes>
+            <Route element={<RootLayout />}>
+              <Route index element={<HomePage />} />
+              <Route path="try-on" element={<TryOnPage />} />
+              <Route path="catalogue" element={<CataloguePage />} />
+              <Route path="store/:shopSlug" element={<CataloguePage />} />
+              <Route path="store/:shopSlug/catalogue" element={<CataloguePage />} />
+              <Route path="store/:shopSlug/try-on" element={<TryOnPage />} />
+              <Route path="shop-dashboard" element={<ShopDashboardPage />} />
+              <Route path="about" element={<AboutPage />} />
+              <Route path="*" element={<NotFoundPage />} />
+            </Route>
+          </Routes>
+        </AuthProvider>
       </ErrorBoundary>
     </BrowserRouter>
   );

@@ -55,6 +55,7 @@ class ShopUpdate(BaseModel):
     email: Optional[str] = Field(None, max_length=255)
     phone: Optional[str] = Field(None, max_length=50)
     address: Optional[str] = None
+    slug: Optional[str] = Field(None, min_length=1, max_length=120)
 
 
 class ShopResponse(ShopBase):
@@ -62,6 +63,8 @@ class ShopResponse(ShopBase):
     Response schema returning complete shop details including database ID and creation timestamp.
     """
     id: int = Field(..., description="Unique database identifier for the shop")
+    slug: Optional[str] = Field(None, description="Unique URL-safe storefront slug for the shop")
+    product_count: int = Field(0, description="Number of published products available in this storefront")
     created_at: datetime = Field(..., description="Timestamp when the shop record was created (UTC)")
 
     model_config = ConfigDict(from_attributes=True)

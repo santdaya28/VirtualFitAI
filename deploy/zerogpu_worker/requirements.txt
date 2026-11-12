@@ -1,0 +1,13 @@
+spaces>=0.28.3
+gradio>=4.44.0
+torch>=2.2.0
+torchvision
+safetensors>=0.4.3
+transformers>=4.40.0
+diffusers>=0.28.0
+accelerate>=0.30.0
+onnxruntime-gpu
+pillow>=10.2.0
+huggingface_hub>=0.23.0
+git+https://github.com/fashn-AI/fashn-vton-1.5.git
+

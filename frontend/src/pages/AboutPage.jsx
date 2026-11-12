@@ -55,8 +55,8 @@ export default function AboutPage() {
     },
     {
       step: 'Step 3',
-      title: 'AI Synthesis (Coming Soon)',
-      desc: 'Planned pipeline: FastAPI backend connects with AI try-on models to map garments onto customer silhouettes.',
+      title: 'AI Synthesis (FASHN VTON v1.5)',
+      desc: 'FastAPI backend orchestrates FASHN VTON diffusion pipeline to synthesize garments onto customer silhouettes with accurate drape.',
     },
     {
       step: 'Step 4',

@@ -38,7 +38,7 @@ export default function HomePage() {
       number: '03',
       title: 'Preview Your Look',
       description:
-        'Our upcoming AI models will visualize realistic fabric drape, fit proportions, and color matching on your silhouette (Integration coming soon).',
+        'Visualize realistic fabric drape, fit proportions, and color matching on your silhouette with neural diffusion technology.',
       icon: Sparkles,
     },
   ];
@@ -152,7 +152,7 @@ export default function HomePage() {
               <div className="pt-6 border-t border-slate-200/80 flex flex-wrap items-center justify-center lg:justify-start gap-6 text-xs text-slate-500 font-medium">
                 <span className="flex items-center gap-1.5">
                   <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                  AI Try-On Technology – Coming Soon
+                  Neural AI Fitting (FASHN VTON v1.5)
                 </span>
                 <span className="flex items-center gap-1.5">
                   <CheckCircle2 className="w-4 h-4 text-emerald-500" />
@@ -234,7 +234,7 @@ export default function HomePage() {
                     </span>
                     <span className="text-slate-600">→</span>
                     <span className="flex items-center gap-1.5 text-indigo-300 font-semibold">
-                      <Sparkles className="w-3.5 h-3.5" /> AI Try-On (Coming Soon)
+                      <Sparkles className="w-3.5 h-3.5" /> FASHN VTON Try-On
                     </span>
                   </div>
                 </div>

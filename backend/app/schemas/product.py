@@ -34,13 +34,13 @@ class ProductBase(BaseModel):
     )
     size: Optional[str] = Field(
         None,
-        max_length=50,
+        max_length=255,
         description="Available garment sizes",
         examples=["S, M, L, XL"],
     )
     color: Optional[str] = Field(
         None,
-        max_length=50,
+        max_length=255,
         description="Primary color or color palette",
         examples=["Navy Blue"],
     )
@@ -65,12 +65,12 @@ class ProductBase(BaseModel):
 
 class ProductCreate(ProductBase):
     """
-    Schema for creating a new product. shop_id is required to associate with an existing shop.
+    Schema for creating a new product. For shop owners, shop_id is derived from the authenticated shop if omitted.
     """
-    shop_id: int = Field(
-        ...,
+    shop_id: Optional[int] = Field(
+        None,
         ge=1,
-        description="ID of the Shop this product belongs to",
+        description="Optional Shop ID; derived server-side from the authenticated shop owner when omitted",
         examples=[1],
     )
 
@@ -84,8 +84,8 @@ class ProductUpdate(BaseModel):
     description: Optional[str] = None
     category: Optional[str] = Field(None, max_length=100)
     price: Optional[Decimal] = Field(None, ge=0)
-    size: Optional[str] = Field(None, max_length=50)
-    color: Optional[str] = Field(None, max_length=50)
+    size: Optional[str] = Field(None, max_length=255)
+    color: Optional[str] = Field(None, max_length=255)
     image_url: Optional[str] = Field(None, max_length=500)
     stock_quantity: Optional[int] = Field(None, ge=0)
     is_available: Optional[bool] = None
